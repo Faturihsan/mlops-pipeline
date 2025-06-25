@@ -1,0 +1,20 @@
+stages:
+  - build
+  - test
+  - deploy
+
+build_fastapi:
+  stage: build
+  script:
+    - docker build -t fastapi-service ./fastapi_service
+
+test_pipeline:
+  stage: test
+  script:
+    - pip install kfp
+    - python kubeflow_pipeline/pipeline.py
+
+deploy_pipeline:
+  stage: deploy
+  script:
+    - echo "Manual upload of cv_pipeline.json to Kubeflow dashboard"
