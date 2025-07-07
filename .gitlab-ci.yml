@@ -2,11 +2,12 @@ stages:
   - build
   - test
   - deploy
+  - sync 
 
 build_fastapi:
   stage: build
   script:
-    - docker build -t fastapi-service ./fastapi_service
+    - docker build -t fastapi_service ./fastapi_service
 
 test_pipeline:
   stage: test
@@ -18,3 +19,9 @@ deploy_pipeline:
   stage: deploy
   script:
     - echo "Manual upload of cv_pipeline.json to Kubeflow dashboard"
+
+sync_notebook:
+  stage: sync
+  script:
+    - chmod +x scripts/sync_to_notebook.sh
+    - ./scripts/sync_to_notebook.sh
