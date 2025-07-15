@@ -54,11 +54,32 @@ def yolov8_pipeline(
     epochs: int = 10,
     project_dir: str = "."
 ):
-    dataset = download_dataset_component(api_key, workspace, project_name, version_number)
-    train = train_model_component(model_name, data_yaml=dataset.output + "/data.yaml", epochs=epochs, project_dir=project_dir)
-    validate = validate_model_component(train.output, data_yaml=dataset.output + "/data.yaml")
-    predict = predict_model_component(train.output, source=dataset.output + "/test/images")
-    export = export_model_component(train.output)
+    dataset = download_dataset_component(
+        api_key=api_key,
+        workspace=workspace,
+        project_name=project_name,
+        version_number=version_number)
+    
+    train = train_model_component(
+        model_name=model_name,
+        data_yaml=dataset.output + "/data.yaml",
+        epochs=epochs,
+        project_dir=project_dir
+    )
+
+    validate = validate_model_component(
+        model_path=train.output,
+        data_yaml=dataset.output + "/data.yaml"
+    )
+
+    predict = predict_model_component(
+        model_path=train.output,
+        source=dataset.output + "/test/images"
+    )
+
+    export = export_model_component(
+        model_path=train.output
+    )
 
 
 if __name__ == "__main__":
