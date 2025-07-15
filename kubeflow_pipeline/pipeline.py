@@ -1,5 +1,6 @@
+from kfp.v2 import compiler
+from kfp import Client
 from kfp.v2.dsl import component, pipeline
-from kfp.v2 import compiler, Client
 
 
 @component
