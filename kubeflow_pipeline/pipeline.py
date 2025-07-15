@@ -1,104 +1,73 @@
-import os
-import glob
-from ultralytics import YOLO
-from roboflow import Roboflow
+from kfp.v2.dsl import component, pipeline
+from kfp.v2 import compiler, Client
 
 
-def download_dataset(api_key: str,
-                     workspace: str,
-                     project_name: str,
-                     version_number: int,
-                     export_format: str = "yolov8"):
-    """
-    Download dataset dari Roboflow.
-    Mengembalikan objek dataset dengan atribut `location`.
-    """
+@component
+def download_dataset_component(api_key: str, workspace: str, project_name: str, version_number: int, export_format: str = "yolov8") -> str:
+    from roboflow import Roboflow
     rf = Roboflow(api_key=api_key)
     project = rf.workspace(workspace).project(project_name)
     version = project.version(version_number)
     dataset = version.download(export_format)
-    return dataset
+    return dataset.location
 
 
-def train_model(model_name: str = "yolov8s.pt",
-                data_yaml: str = None,
-                epochs: int = 10,
-                project_dir: str = ".") -> str:
-    """
-    Train model YOLOv8.
-    Mengembalikan path ke berkas best.pt setelah training.
-    """
+@component
+def train_model_component(model_name: str, data_yaml: str, epochs: int, project_dir: str) -> str:
+    from ultralytics import YOLO
+    import os
     model = YOLO(model_name)
     model.train(data=data_yaml, epochs=epochs, project=project_dir, plots=True)
-    best_weights = os.path.join(
-        project_dir, "runs", "detect", "train", "weights", "best.pt")
+    best_weights = os.path.join(project_dir, "runs", "detect", "train", "weights", "best.pt")
     return best_weights
 
 
-def validate_model(model_path: str,
-                   data_yaml: str):
-    """
-    Validasi model YOLOv8 yang sudah di-train.
-    """
+@component
+def validate_model_component(model_path: str, data_yaml: str):
+    from ultralytics import YOLO
     model = YOLO(model_path)
     model.val(data=data_yaml)
 
 
-def predict_model(model_path: str,
-                  source: str,
-                  conf: float = 0.25,
-                  save: bool = True):
-    """
-    Jalankan prediksi pada dataset.
-    """
+@component
+def predict_model_component(model_path: str, source: str, conf: float = 0.25, save: bool = True):
+    from ultralytics import YOLO
     model = YOLO(model_path)
-    results = model.predict(source=source, conf=conf, save=save)
-    return results
+    model.predict(source=source, conf=conf, save=save)
 
 
-def export_model(model_path: str,
-                 export_format: str = "onnx",
-                 nms: bool = True):
-    """
-    Export model yang sudah di-train ke format tertentu (misal ONNX).
-    """
+@component
+def export_model_component(model_path: str, export_format: str = "onnx", nms: bool = True):
+    from ultralytics import YOLO
     model = YOLO(model_path)
     model.export(format=export_format, nms=nms)
 
 
-def main():
-    # Set direktori kerja
-    HOME = os.getcwd()
-
-    # Parameter untuk download dataset
-    API_KEY = "Ta6oCmhCi264c7zHQyZM"
-    WORKSPACE= "zx-r6lu6"
-    PROJECT_NAME= "student-and-non-student"
-    VERSION_NUMBER= 1
-
-    # Download dataset
-    dataset= download_dataset(
-        API_KEY, WORKSPACE, PROJECT_NAME, VERSION_NUMBER)
-    data_yaml= os.path.join(dataset.location, "data.yaml")
-
-    # Train model
-    best_model_path= train_model(
-        model_name = "yolov8s.pt",
-        data_yaml = data_yaml,
-        epochs = 10,
-        project_dir = HOME
-    )
-
-    # Validasi model
-    validate_model(best_model_path, data_yaml)
-
-    # Prediksi pada test set
-    test_images= os.path.join(dataset.location, "test", "images")
-    predict_model(best_model_path, source=test_images, conf=0.25, save=True)
-
-    # Export model ke ONNX
-    export_model(best_model_path, export_format="onnx", nms=True)
+@pipeline(name="yolov8-training-pipeline")
+def yolov8_pipeline(
+    api_key: str = "Ta6oCmhCi264c7zHQyZM",
+    workspace: str = "zx-r6lu6",
+    project_name: str = "student-and-non-student",
+    version_number: int = 1,
+    model_name: str = "yolov8s.pt",
+    epochs: int = 10,
+    project_dir: str = "."
+):
+    dataset = download_dataset_component(api_key, workspace, project_name, version_number)
+    train = train_model_component(model_name, data_yaml=dataset.output + "/data.yaml", epochs=epochs, project_dir=project_dir)
+    validate = validate_model_component(train.output, data_yaml=dataset.output + "/data.yaml")
+    predict = predict_model_component(train.output, source=dataset.output + "/test/images")
+    export = export_model_component(train.output)
 
 
 if __name__ == "__main__":
-    main()
+    compiler.Compiler().compile(
+        pipeline_func=yolov8_pipeline,
+        package_path="yolov8_pipeline.json"
+    )
+
+    client = Client(host="http://localhost:8080/pipeline")
+    client.upload_pipeline(
+        pipeline_package_path="yolov8_pipeline.json",
+        pipeline_name="YOLOv8 Training Pipeline"
+    )
