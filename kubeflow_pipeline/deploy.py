@@ -11,7 +11,7 @@ if __name__ == "__main__":
     print("✅ Compiled yolov8_pipeline.json")
 
     # 2) Upload to Kubeflow (ensure kubectl port-forward is active)
-    client = Client(host="http://localhost:8888/pipeline")
+    client = Client(host="http://localhost:8085/pipeline")
     client.upload_pipeline(
         pipeline_package_path="yolov8_pipeline.json",
         pipeline_name="YOLOv8 Object Detection"
