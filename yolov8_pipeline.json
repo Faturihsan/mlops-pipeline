@@ -1,0 +1,417 @@
+{
+  "components": {
+    "comp-download-dataset-component": {
+      "executorLabel": "exec-download-dataset-component",
+      "inputDefinitions": {
+        "parameters": {
+          "api_key": {
+            "parameterType": "STRING"
+          },
+          "export_format": {
+            "defaultValue": "yolov8",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "project_name": {
+            "parameterType": "STRING"
+          },
+          "version_number": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "workspace": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "Output": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-export-model-component": {
+      "executorLabel": "exec-export-model-component",
+      "inputDefinitions": {
+        "parameters": {
+          "export_format": {
+            "defaultValue": "onnx",
+            "isOptional": true,
+            "parameterType": "STRING"
+          },
+          "model_path": {
+            "parameterType": "STRING"
+          },
+          "nms": {
+            "defaultValue": true,
+            "isOptional": true,
+            "parameterType": "BOOLEAN"
+          }
+        }
+      }
+    },
+    "comp-predict-model-component": {
+      "executorLabel": "exec-predict-model-component",
+      "inputDefinitions": {
+        "parameters": {
+          "conf": {
+            "defaultValue": 0.25,
+            "isOptional": true,
+            "parameterType": "NUMBER_DOUBLE"
+          },
+          "dataset_location": {
+            "parameterType": "STRING"
+          },
+          "model_path": {
+            "parameterType": "STRING"
+          },
+          "save": {
+            "defaultValue": true,
+            "isOptional": true,
+            "parameterType": "BOOLEAN"
+          }
+        }
+      }
+    },
+    "comp-train-model-component": {
+      "executorLabel": "exec-train-model-component",
+      "inputDefinitions": {
+        "parameters": {
+          "dataset_location": {
+            "parameterType": "STRING"
+          },
+          "epochs": {
+            "parameterType": "NUMBER_INTEGER"
+          },
+          "model_name": {
+            "parameterType": "STRING"
+          },
+          "project_dir": {
+            "parameterType": "STRING"
+          }
+        }
+      },
+      "outputDefinitions": {
+        "parameters": {
+          "Output": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    },
+    "comp-validate-model-component": {
+      "executorLabel": "exec-validate-model-component",
+      "inputDefinitions": {
+        "parameters": {
+          "dataset_location": {
+            "parameterType": "STRING"
+          },
+          "model_path": {
+            "parameterType": "STRING"
+          }
+        }
+      }
+    }
+  },
+  "deploymentSpec": {
+    "executors": {
+      "exec-download-dataset-component": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "download_dataset_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.9.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef download_dataset_component(\n    api_key: str,\n    workspace: str,\n    project_name: str,\n    version_number: int,\n    export_format: str = \"yolov8\"\n) -> str:\n    \"\"\"Downloads dataset via Roboflow and returns the local folder path.\"\"\"\n    from roboflow import Roboflow\n    rf = Roboflow(api_key=api_key)\n    project = rf.workspace(workspace).project(project_name)\n    version = project.version(version_number)\n    dataset = version.download(export_format)\n    return dataset.location\n\n"
+          ],
+          "image": "python:3.8"
+        }
+      },
+      "exec-export-model-component": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "export_model_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.9.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef export_model_component(\n    model_path: str,\n    export_format: str = \"onnx\",\n    nms: bool = True\n):\n    \"\"\"Exports the trained model to the specified format (e.g. ONNX).\"\"\"\n    from ultralytics import YOLO\n    model = YOLO(model_path)\n    model.export(format=export_format, nms=nms)\n\n"
+          ],
+          "image": "python:3.8"
+        }
+      },
+      "exec-predict-model-component": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "predict_model_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.9.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef predict_model_component(\n    model_path: str,\n    dataset_location: str,\n    conf: float = 0.25,\n    save: bool = True\n):\n    \"\"\"Runs predictions on the test split and optionally saves results.\"\"\"\n    from ultralytics import YOLO\n    source = os.path.join(dataset_location, \"test\", \"images\")\n    model = YOLO(model_path)\n    model.predict(source=source, conf=conf, save=save)\n\n"
+          ],
+          "image": "python:3.8"
+        }
+      },
+      "exec-train-model-component": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "train_model_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.9.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef train_model_component(\n    model_name: str,\n    dataset_location: str,\n    epochs: int,\n    project_dir: str\n) -> str:\n    \"\"\"Trains YOLOv8 model and returns the path to best weights.\"\"\"\n    from ultralytics import YOLO\n    data_yaml = os.path.join(dataset_location, \"data.yaml\")\n    model = YOLO(model_name)\n    model.train(data=data_yaml, epochs=epochs, project=project_dir, plots=True)\n    best_weights = os.path.join(\n        project_dir, \"runs\", \"detect\", \"train\", \"weights\", \"best.pt\"\n    )\n    return best_weights\n\n"
+          ],
+          "image": "python:3.8"
+        }
+      },
+      "exec-validate-model-component": {
+        "container": {
+          "args": [
+            "--executor_input",
+            "{{$}}",
+            "--function_to_execute",
+            "validate_model_component"
+          ],
+          "command": [
+            "sh",
+            "-c",
+            "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip || python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location 'kfp==2.9.0' '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"$0\" \"$@\"\n",
+            "sh",
+            "-ec",
+            "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef validate_model_component(\n    model_path: str,\n    dataset_location: str\n):\n    \"\"\"Validates the trained model against the validation set.\"\"\"\n    from ultralytics import YOLO\n    data_yaml = os.path.join(dataset_location, \"data.yaml\")\n    model = YOLO(model_path)\n    model.val(data=data_yaml)\n\n"
+          ],
+          "image": "python:3.8"
+        }
+      }
+    }
+  },
+  "pipelineInfo": {
+    "name": "yolov8-training-pipeline"
+  },
+  "root": {
+    "dag": {
+      "tasks": {
+        "download-dataset-component": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-download-dataset-component"
+          },
+          "inputs": {
+            "parameters": {
+              "api_key": {
+                "componentInputParameter": "api_key"
+              },
+              "project_name": {
+                "componentInputParameter": "project_name"
+              },
+              "version_number": {
+                "componentInputParameter": "version_number"
+              },
+              "workspace": {
+                "componentInputParameter": "workspace"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "download-dataset-component"
+          }
+        },
+        "export-model-component": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-export-model-component"
+          },
+          "dependentTasks": [
+            "train-model-component"
+          ],
+          "inputs": {
+            "parameters": {
+              "model_path": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "Output",
+                  "producerTask": "train-model-component"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "export-model-component"
+          }
+        },
+        "predict-model-component": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-predict-model-component"
+          },
+          "dependentTasks": [
+            "download-dataset-component",
+            "train-model-component"
+          ],
+          "inputs": {
+            "parameters": {
+              "dataset_location": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "Output",
+                  "producerTask": "download-dataset-component"
+                }
+              },
+              "model_path": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "Output",
+                  "producerTask": "train-model-component"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "predict-model-component"
+          }
+        },
+        "train-model-component": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-train-model-component"
+          },
+          "dependentTasks": [
+            "download-dataset-component"
+          ],
+          "inputs": {
+            "parameters": {
+              "dataset_location": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "Output",
+                  "producerTask": "download-dataset-component"
+                }
+              },
+              "epochs": {
+                "componentInputParameter": "epochs"
+              },
+              "model_name": {
+                "componentInputParameter": "model_name"
+              },
+              "project_dir": {
+                "componentInputParameter": "project_dir"
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "train-model-component"
+          }
+        },
+        "validate-model-component": {
+          "cachingOptions": {
+            "enableCache": true
+          },
+          "componentRef": {
+            "name": "comp-validate-model-component"
+          },
+          "dependentTasks": [
+            "download-dataset-component",
+            "train-model-component"
+          ],
+          "inputs": {
+            "parameters": {
+              "dataset_location": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "Output",
+                  "producerTask": "download-dataset-component"
+                }
+              },
+              "model_path": {
+                "taskOutputParameter": {
+                  "outputParameterKey": "Output",
+                  "producerTask": "train-model-component"
+                }
+              }
+            }
+          },
+          "taskInfo": {
+            "name": "validate-model-component"
+          }
+        }
+      }
+    },
+    "inputDefinitions": {
+      "parameters": {
+        "api_key": {
+          "defaultValue": "Ta6oCmhCi264c7zHQyZM",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "epochs": {
+          "defaultValue": 10.0,
+          "isOptional": true,
+          "parameterType": "NUMBER_INTEGER"
+        },
+        "model_name": {
+          "defaultValue": "yolov8s.pt",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "project_dir": {
+          "defaultValue": ".",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "project_name": {
+          "defaultValue": "student-and-non-student",
+          "isOptional": true,
+          "parameterType": "STRING"
+        },
+        "version_number": {
+          "defaultValue": 1.0,
+          "isOptional": true,
+          "parameterType": "NUMBER_INTEGER"
+        },
+        "workspace": {
+          "defaultValue": "zx-r6lu6",
+          "isOptional": true,
+          "parameterType": "STRING"
+        }
+      }
+    }
+  },
+  "schemaVersion": "2.1.0",
+  "sdkVersion": "kfp-2.9.0"
+}
