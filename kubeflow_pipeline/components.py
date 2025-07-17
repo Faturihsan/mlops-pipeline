@@ -9,12 +9,16 @@ def download_dataset(
     version_number: int,
     export_format: str = "yolov8"
 ) -> str:
-    """Downloads dataset via Roboflow and returns local folder path."""
+    """
+    Download dataset dari Roboflow.
+    Returns the local folder path.
+    """
     from roboflow import Roboflow
     rf = Roboflow(api_key=api_key)
-    ds = rf.workspace(workspace).project(project_name).version(version_number)
-    folder = ds.download(export_format)
-    return folder.location
+    project = rf.workspace(workspace).project(project_name)
+    version = project.version(version_number)
+    dataset = version.download(export_format)
+    return dataset.location
 
 @component
 def train_model(
@@ -23,11 +27,14 @@ def train_model(
     epochs: int,
     output_dir: str
 ) -> str:
-    """Trains YOLOv8 and returns path to best.pt."""
+    """
+    Train model YOLOv8.
+    Returns the path to best.pt after training.
+    """
     from ultralytics import YOLO
-    yaml = os.path.join(dataset_path, "data.yaml")
+    data_yaml = os.path.join(dataset_path, "data.yaml")
     model = YOLO(model_name)
-    model.train(data=yaml, epochs=epochs, project=output_dir, plots=True)
+    model.train(data=data_yaml, epochs=epochs, project=output_dir, plots=True)
     return os.path.join(output_dir, "runs", "detect", "train", "weights", "best.pt")
 
 @component
@@ -35,10 +42,12 @@ def validate_model(
     model_path: str,
     dataset_path: str
 ):
-    """Validates model on the dataset’s validation split."""
+    """
+    Validasi model YOLOv8 yang sudah di-train.
+    """
     from ultralytics import YOLO
-    yaml = os.path.join(dataset_path, "data.yaml")
-    YOLO(model_path).val(data=yaml)
+    data_yaml = os.path.join(dataset_path, "data.yaml")
+    YOLO(model_path).val(data=data_yaml)
 
 @component
 def predict_model(
@@ -47,7 +56,9 @@ def predict_model(
     conf: float = 0.25,
     save: bool = True
 ):
-    """Runs inference on test images."""
+    """
+    Jalankan prediksi pada dataset test/images.
+    """
     from ultralytics import YOLO
     source = os.path.join(dataset_path, "test", "images")
     YOLO(model_path).predict(source=source, conf=conf, save=save)
@@ -58,6 +69,8 @@ def export_model(
     export_format: str = "onnx",
     nms: bool = True
 ):
-    """Exports the trained model to ONNX (or other formats)."""
+    """
+    Export model yang sudah di-train ke format tertentu (misal ONNX).
+    """
     from ultralytics import YOLO
     YOLO(model_path).export(format=export_format, nms=nms)

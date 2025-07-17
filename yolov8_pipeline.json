@@ -1,7 +1,7 @@
 {
   "components": {
-    "comp-download-dataset-component": {
-      "executorLabel": "exec-download-dataset-component",
+    "comp-download-dataset": {
+      "executorLabel": "exec-download-dataset",
       "inputDefinitions": {
         "parameters": {
           "api_key": {
@@ -31,8 +31,8 @@
         }
       }
     },
-    "comp-export-model-component": {
-      "executorLabel": "exec-export-model-component",
+    "comp-export-model": {
+      "executorLabel": "exec-export-model",
       "inputDefinitions": {
         "parameters": {
           "export_format": {
@@ -51,8 +51,8 @@
         }
       }
     },
-    "comp-predict-model-component": {
-      "executorLabel": "exec-predict-model-component",
+    "comp-predict-model": {
+      "executorLabel": "exec-predict-model",
       "inputDefinitions": {
         "parameters": {
           "conf": {
@@ -60,7 +60,7 @@
             "isOptional": true,
             "parameterType": "NUMBER_DOUBLE"
           },
-          "dataset_location": {
+          "dataset_path": {
             "parameterType": "STRING"
           },
           "model_path": {
@@ -74,11 +74,11 @@
         }
       }
     },
-    "comp-train-model-component": {
-      "executorLabel": "exec-train-model-component",
+    "comp-train-model": {
+      "executorLabel": "exec-train-model",
       "inputDefinitions": {
         "parameters": {
-          "dataset_location": {
+          "dataset_path": {
             "parameterType": "STRING"
           },
           "epochs": {
@@ -87,7 +87,7 @@
           "model_name": {
             "parameterType": "STRING"
           },
-          "project_dir": {
+          "output_dir": {
             "parameterType": "STRING"
           }
         }
@@ -100,11 +100,11 @@
         }
       }
     },
-    "comp-validate-model-component": {
-      "executorLabel": "exec-validate-model-component",
+    "comp-validate-model": {
+      "executorLabel": "exec-validate-model",
       "inputDefinitions": {
         "parameters": {
-          "dataset_location": {
+          "dataset_path": {
             "parameterType": "STRING"
           },
           "model_path": {
@@ -116,13 +116,13 @@
   },
   "deploymentSpec": {
     "executors": {
-      "exec-download-dataset-component": {
+      "exec-download-dataset": {
         "container": {
           "args": [
             "--executor_input",
             "{{$}}",
             "--function_to_execute",
-            "download_dataset_component"
+            "download_dataset"
           ],
           "command": [
             "sh",
@@ -131,18 +131,18 @@
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef download_dataset_component(\n    api_key: str,\n    workspace: str,\n    project_name: str,\n    version_number: int,\n    export_format: str = \"yolov8\"\n) -> str:\n    \"\"\"Downloads dataset via Roboflow and returns the local folder path.\"\"\"\n    from roboflow import Roboflow\n    rf = Roboflow(api_key=api_key)\n    project = rf.workspace(workspace).project(project_name)\n    version = project.version(version_number)\n    dataset = version.download(export_format)\n    return dataset.location\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef download_dataset(\n    api_key: str,\n    workspace: str,\n    project_name: str,\n    version_number: int,\n    export_format: str = \"yolov8\"\n) -> str:\n    \"\"\"Downloads dataset via Roboflow and returns local folder path.\"\"\"\n    from roboflow import Roboflow\n    rf = Roboflow(api_key=api_key)\n    ds = rf.workspace(workspace).project(project_name).version(version_number)\n    folder = ds.download(export_format)\n    return folder.location\n\n"
           ],
           "image": "python:3.8"
         }
       },
-      "exec-export-model-component": {
+      "exec-export-model": {
         "container": {
           "args": [
             "--executor_input",
             "{{$}}",
             "--function_to_execute",
-            "export_model_component"
+            "export_model"
           ],
           "command": [
             "sh",
@@ -151,18 +151,18 @@
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef export_model_component(\n    model_path: str,\n    export_format: str = \"onnx\",\n    nms: bool = True\n):\n    \"\"\"Exports the trained model to the specified format (e.g. ONNX).\"\"\"\n    from ultralytics import YOLO\n    model = YOLO(model_path)\n    model.export(format=export_format, nms=nms)\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef export_model(\n    model_path: str,\n    export_format: str = \"onnx\",\n    nms: bool = True\n):\n    \"\"\"Exports the trained model to ONNX (or other formats).\"\"\"\n    from ultralytics import YOLO\n    YOLO(model_path).export(format=export_format, nms=nms)\n\n"
           ],
           "image": "python:3.8"
         }
       },
-      "exec-predict-model-component": {
+      "exec-predict-model": {
         "container": {
           "args": [
             "--executor_input",
             "{{$}}",
             "--function_to_execute",
-            "predict_model_component"
+            "predict_model"
           ],
           "command": [
             "sh",
@@ -171,18 +171,18 @@
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef predict_model_component(\n    model_path: str,\n    dataset_location: str,\n    conf: float = 0.25,\n    save: bool = True\n):\n    \"\"\"Runs predictions on the test split and optionally saves results.\"\"\"\n    from ultralytics import YOLO\n    source = os.path.join(dataset_location, \"test\", \"images\")\n    model = YOLO(model_path)\n    model.predict(source=source, conf=conf, save=save)\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef predict_model(\n    model_path: str,\n    dataset_path: str,\n    conf: float = 0.25,\n    save: bool = True\n):\n    \"\"\"Runs inference on test images.\"\"\"\n    from ultralytics import YOLO\n    source = os.path.join(dataset_path, \"test\", \"images\")\n    YOLO(model_path).predict(source=source, conf=conf, save=save)\n\n"
           ],
           "image": "python:3.8"
         }
       },
-      "exec-train-model-component": {
+      "exec-train-model": {
         "container": {
           "args": [
             "--executor_input",
             "{{$}}",
             "--function_to_execute",
-            "train_model_component"
+            "train_model"
           ],
           "command": [
             "sh",
@@ -191,18 +191,18 @@
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef train_model_component(\n    model_name: str,\n    dataset_location: str,\n    epochs: int,\n    project_dir: str\n) -> str:\n    \"\"\"Trains YOLOv8 model and returns the path to best weights.\"\"\"\n    from ultralytics import YOLO\n    data_yaml = os.path.join(dataset_location, \"data.yaml\")\n    model = YOLO(model_name)\n    model.train(data=data_yaml, epochs=epochs, project=project_dir, plots=True)\n    best_weights = os.path.join(\n        project_dir, \"runs\", \"detect\", \"train\", \"weights\", \"best.pt\"\n    )\n    return best_weights\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef train_model(\n    model_name: str,\n    dataset_path: str,\n    epochs: int,\n    output_dir: str\n) -> str:\n    \"\"\"Trains YOLOv8 and returns path to best.pt.\"\"\"\n    from ultralytics import YOLO\n    yaml = os.path.join(dataset_path, \"data.yaml\")\n    model = YOLO(model_name)\n    model.train(data=yaml, epochs=epochs, project=output_dir, plots=True)\n    return os.path.join(output_dir, \"runs\", \"detect\", \"train\", \"weights\", \"best.pt\")\n\n"
           ],
           "image": "python:3.8"
         }
       },
-      "exec-validate-model-component": {
+      "exec-validate-model": {
         "container": {
           "args": [
             "--executor_input",
             "{{$}}",
             "--function_to_execute",
-            "validate_model_component"
+            "validate_model"
           ],
           "command": [
             "sh",
@@ -211,7 +211,7 @@
             "sh",
             "-ec",
             "program_path=$(mktemp -d)\n\nprintf \"%s\" \"$0\" > \"$program_path/ephemeral_component.py\"\n_KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         \"$program_path/ephemeral_component.py\"                         \"$@\"\n",
-            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef validate_model_component(\n    model_path: str,\n    dataset_location: str\n):\n    \"\"\"Validates the trained model against the validation set.\"\"\"\n    from ultralytics import YOLO\n    data_yaml = os.path.join(dataset_location, \"data.yaml\")\n    model = YOLO(model_path)\n    model.val(data=data_yaml)\n\n"
+            "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import *\n\ndef validate_model(\n    model_path: str,\n    dataset_path: str\n):\n    \"\"\"Validates model on the dataset\u2019s validation split.\"\"\"\n    from ultralytics import YOLO\n    yaml = os.path.join(dataset_path, \"data.yaml\")\n    YOLO(model_path).val(data=yaml)\n\n"
           ],
           "image": "python:3.8"
         }
@@ -219,17 +219,17 @@
     }
   },
   "pipelineInfo": {
-    "name": "yolov8-training-pipeline"
+    "name": "yolov8-object-detection-pipeline"
   },
   "root": {
     "dag": {
       "tasks": {
-        "download-dataset-component": {
+        "download-dataset": {
           "cachingOptions": {
             "enableCache": true
           },
           "componentRef": {
-            "name": "comp-download-dataset-component"
+            "name": "comp-download-dataset"
           },
           "inputs": {
             "parameters": {
@@ -248,80 +248,80 @@
             }
           },
           "taskInfo": {
-            "name": "download-dataset-component"
+            "name": "download-dataset"
           }
         },
-        "export-model-component": {
+        "export-model": {
           "cachingOptions": {
             "enableCache": true
           },
           "componentRef": {
-            "name": "comp-export-model-component"
+            "name": "comp-export-model"
           },
           "dependentTasks": [
-            "train-model-component"
+            "train-model"
           ],
           "inputs": {
             "parameters": {
               "model_path": {
                 "taskOutputParameter": {
                   "outputParameterKey": "Output",
-                  "producerTask": "train-model-component"
+                  "producerTask": "train-model"
                 }
               }
             }
           },
           "taskInfo": {
-            "name": "export-model-component"
+            "name": "export-model"
           }
         },
-        "predict-model-component": {
+        "predict-model": {
           "cachingOptions": {
             "enableCache": true
           },
           "componentRef": {
-            "name": "comp-predict-model-component"
+            "name": "comp-predict-model"
           },
           "dependentTasks": [
-            "download-dataset-component",
-            "train-model-component"
+            "download-dataset",
+            "train-model"
           ],
           "inputs": {
             "parameters": {
-              "dataset_location": {
+              "dataset_path": {
                 "taskOutputParameter": {
                   "outputParameterKey": "Output",
-                  "producerTask": "download-dataset-component"
+                  "producerTask": "download-dataset"
                 }
               },
               "model_path": {
                 "taskOutputParameter": {
                   "outputParameterKey": "Output",
-                  "producerTask": "train-model-component"
+                  "producerTask": "train-model"
                 }
               }
             }
           },
           "taskInfo": {
-            "name": "predict-model-component"
+            "name": "predict-model"
           }
         },
-        "train-model-component": {
+        "train-model": {
           "cachingOptions": {
             "enableCache": true
           },
           "componentRef": {
-            "name": "comp-train-model-component"
+            "name": "comp-train-model"
           },
           "dependentTasks": [
-            "download-dataset-component"
+            "download-dataset"
           ],
           "inputs": {
             "parameters": {
-              "dataset_location": {
+              "dataset_path": {
                 "taskOutputParameter": {
                   "outputParameterKey": "Output",
-                  "producerTask": "download-dataset-component"
+                  "producerTask": "download-dataset"
                 }
               },
               "epochs": {
@@ -330,44 +330,44 @@
               "model_name": {
                 "componentInputParameter": "model_name"
               },
-              "project_dir": {
-                "componentInputParameter": "project_dir"
+              "output_dir": {
+                "componentInputParameter": "output_dir"
               }
             }
           },
           "taskInfo": {
-            "name": "train-model-component"
+            "name": "train-model"
           }
         },
-        "validate-model-component": {
+        "validate-model": {
           "cachingOptions": {
             "enableCache": true
           },
           "componentRef": {
-            "name": "comp-validate-model-component"
+            "name": "comp-validate-model"
           },
           "dependentTasks": [
-            "download-dataset-component",
-            "train-model-component"
+            "download-dataset",
+            "train-model"
           ],
           "inputs": {
             "parameters": {
-              "dataset_location": {
+              "dataset_path": {
                 "taskOutputParameter": {
                   "outputParameterKey": "Output",
-                  "producerTask": "download-dataset-component"
+                  "producerTask": "download-dataset"
                 }
               },
               "model_path": {
                 "taskOutputParameter": {
                   "outputParameterKey": "Output",
-                  "producerTask": "train-model-component"
+                  "producerTask": "train-model"
                 }
               }
             }
           },
           "taskInfo": {
-            "name": "validate-model-component"
+            "name": "validate-model"
           }
         }
       }
@@ -389,8 +389,8 @@
           "isOptional": true,
           "parameterType": "STRING"
         },
-        "project_dir": {
-          "defaultValue": ".",
+        "output_dir": {
+          "defaultValue": "/mnt/data/output",
           "isOptional": true,
           "parameterType": "STRING"
         },

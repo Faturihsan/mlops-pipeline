@@ -39,7 +39,7 @@ def yolov8_pipeline(
         dataset_path=ds.output
     )
 
-    # 4) infer
+    # 4) predict
     predict_model(
         model_path=trained.output,
         dataset_path=ds.output
