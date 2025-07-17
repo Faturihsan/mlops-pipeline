@@ -15,9 +15,14 @@ def yolov8_pipeline(
     version_number: int = 1,
     model_name: str = "yolov8s.pt",
     epochs: int = 10,
-    output_dir: str = "/mnt/data/output"
+    output_dir: str = "/mnt/data/output",
+
+    # MinIO parameters
+    minio_endpoint: str = "minio-service.kubeflow.svc.cluster.local:9000",
+    minio_access_key: str = "minio",
+    minio_secret_key: str = "minio123",
+    bucket: str = "models-trained"
 ):
-    # 1) download
     ds = download_dataset(
         api_key=api_key,
         workspace=workspace,
@@ -25,7 +30,6 @@ def yolov8_pipeline(
         version_number=version_number
     )
 
-    # 2) train
     trained = train_model(
         model_name=model_name,
         dataset_path=ds.output,
@@ -33,19 +37,20 @@ def yolov8_pipeline(
         output_dir=output_dir
     )
 
-    # 3) validate
     validate_model(
         model_path=trained.output,
         dataset_path=ds.output
     )
 
-    # 4) predict
     predict_model(
         model_path=trained.output,
         dataset_path=ds.output
     )
 
-    # 5) export
     export_model(
-        model_path=trained.output
+        model_path=trained.output,
+        minio_endpoint=minio_endpoint,
+        minio_access_key=minio_access_key,
+        minio_secret_key=minio_secret_key,
+        bucket=bucket
     )
