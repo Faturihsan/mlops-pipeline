@@ -1,32 +1,32 @@
-stages:
-  # - build
-  - test
-  - deploy
-  - sync 
+# stages:
+#   # - build
+#   - test
+#   - deploy
+#   - sync 
 
-# build_fastapi:
-#   stage: build
+# # build_fastapi:
+# #   stage: build
+# #   script:
+# #     - docker build -t fastapi_service ./fastapi_service
+
+
+# test_pipeline:
+#   image: python:3.9  
+#   stage: test
 #   script:
-#     - docker build -t fastapi_service ./fastapi_service
+#     - pip install kfp
+#     - python kubeflow_pipeline/pipeline.py
 
+# deploy_pipeline:
+#   image: python:3.9  
+#   stage: deploy
+#   script:
+#     - echo "Manual upload of cv_pipeline.json to Kubeflow dashboard"
 
-test_pipeline:
-  image: python:3.9  
-  stage: test
-  script:
-    - pip install kfp
-    - python kubeflow_pipeline/pipeline.py
-
-deploy_pipeline:
-  image: python:3.9  
-  stage: deploy
-  script:
-    - echo "Manual upload of cv_pipeline.json to Kubeflow dashboard"
-
-sync_notebook:
-  image: python:3.9 
-  stage: sync
-  script:
-    - apt-get update && apt-get install -y curl git
-    - chmod +x scripts/sync_to_notebook.sh
-    - ./scripts/sync_to_notebook.sh
+# sync_notebook:
+#   image: python:3.9 
+#   stage: sync
+#   script:
+#     - apt-get update && apt-get install -y curl git
+#     - chmod +x scripts/sync_to_notebook.sh
+#     - ./scripts/sync_to_notebook.sh
