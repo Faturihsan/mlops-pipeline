@@ -16,7 +16,7 @@ if __name__ == "__main__":
     client = kfp.Client()
     client.upload_pipeline(
         pipeline_package_path="yolov8_pipeline.json",
-        pipeline_name="Object Detection Test_1.4"
+        pipeline_name="Object Detection Test_1.5"
     )
     print("✅ Uploaded pipeline to Kubeflow")
 
