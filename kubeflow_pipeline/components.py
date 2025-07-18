@@ -1,5 +1,5 @@
 import os
-from kfp.v2.dsl import component
+from kfp.dsl import component
 
 @component
 def download_dataset(

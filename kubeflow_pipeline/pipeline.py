@@ -1,4 +1,4 @@
-from kfp.v2.dsl import pipeline
+from kfp.dsl import pipeline
 from components import (
     download_dataset,
     train_model,

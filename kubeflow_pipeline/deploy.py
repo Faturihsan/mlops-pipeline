@@ -1,5 +1,5 @@
 import kfp
-from kfp.v2 import compiler
+from kfp import compiler
 from kfp import Client
 from pipeline import yolov8_pipeline
 
