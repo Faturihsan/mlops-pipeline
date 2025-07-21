@@ -1,6 +1,5 @@
 import kfp
-from kfp import dsl
-from kfp.components import func_to_container_op
+from kfp import dsl, components
 
 from kubeflow_pipeline.components import (
     download_dataset,
@@ -10,12 +9,32 @@ from kubeflow_pipeline.components import (
     export_model
 )
 
-# wrap functions
-download_op = func_to_container_op(download_dataset, base_image="python:3.9", packages_to_install=["roboflow"])
-train_op    = func_to_container_op(train_model,    base_image="python:3.9", packages_to_install=["ultralytics"])
-validate_op = func_to_container_op(validate_model, base_image="python:3.9", packages_to_install=["ultralytics"])
-predict_op  = func_to_container_op(predict_model,  base_image="python:3.9", packages_to_install=["ultralytics"])
-export_op   = func_to_container_op(export_model,   base_image="python:3.9", packages_to_install=["ultralytics","minio"])
+# wrap your python functions into container ops
+download_op = components.func_to_container_op(
+    download_dataset,
+    base_image="python:3.9",
+    packages_to_install=["roboflow"]
+)
+train_op = components.func_to_container_op(
+    train_model,
+    base_image="python:3.9",
+    packages_to_install=["ultralytics"]
+)
+validate_op = components.func_to_container_op(
+    validate_model,
+    base_image="python:3.9",
+    packages_to_install=["ultralytics"]
+)
+predict_op = components.func_to_container_op(
+    predict_model,
+    base_image="python:3.9",
+    packages_to_install=["ultralytics"]
+)
+export_op = components.func_to_container_op(
+    export_model,
+    base_image="python:3.9",
+    packages_to_install=["ultralytics","minio"]
+)
 
 @dsl.pipeline(
     name="yolov8-object-detection-pipeline-v1",
@@ -34,8 +53,8 @@ def yolov8_pipeline(
     minio_secret_key: str = "minio123",
     bucket: str = "models-trained"
 ):
-    ds = download_op(api_key, workspace, project_name, version_number)
-    train = train_op(model_name, ds.output, epochs, output_dir).after(ds)
+    ds      = download_op(api_key, workspace, project_name, version_number)
+    train   = train_op(model_name, ds.output, epochs, output_dir).after(ds)
     validate_op(train.output, ds.output).after(train)
     predict_op(train.output, ds.output).after(train)
     export_op(
