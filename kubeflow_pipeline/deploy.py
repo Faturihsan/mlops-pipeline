@@ -13,7 +13,7 @@ if __name__ == "__main__":
     print("✅ Compiled yolov8_pipeline.json")
 
     # 2) Upload (in-cluster or via port-forward svc/ml-pipeline)
-    client = kfp.Client(host="http://localhost:9090/pipeline")
+    client = kfp.Client()
     client.upload_pipeline(
         pipeline_package_path="yolov8_pipeline.json",
         pipeline_name="Object Detection Test_1.5"
@@ -40,4 +40,5 @@ if __name__ == "__main__":
         experiment_name="YOLOv8-Experiments",
         run_name="auto-run-"+kfp.dsl.PIPELINE_JOB_ID_PLACEHOLDER
     )
+    print("Run ID:", run.run_id)
     print(f"🚀 Launched run: {run.run_id}")
