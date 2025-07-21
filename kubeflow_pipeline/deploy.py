@@ -1,6 +1,6 @@
 import kfp
 from kfp.compiler import Compiler
-from kubeflow_pipeline.pipeline import yolov8_pipeline
+from pipeline import yolov8_pipeline
 
 if __name__ == "__main__":
     # 1) Compile
