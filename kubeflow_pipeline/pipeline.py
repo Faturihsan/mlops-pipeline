@@ -1,44 +1,15 @@
-import kfp
-from kfp import dsl, components
-
+from kfp import dsl
 from kubeflow_pipeline.components import (
-    download_dataset,
-    train_model,
-    validate_model,
-    predict_model,
-    export_model
-)
-
-# wrap your python functions into container ops
-download_op = components.func_to_container_op(
-    download_dataset,
-    base_image="python:3.9",
-    packages_to_install=["roboflow"]
-)
-train_op = components.func_to_container_op(
-    train_model,
-    base_image="python:3.9",
-    packages_to_install=["ultralytics"]
-)
-validate_op = components.func_to_container_op(
-    validate_model,
-    base_image="python:3.9",
-    packages_to_install=["ultralytics"]
-)
-predict_op = components.func_to_container_op(
-    predict_model,
-    base_image="python:3.9",
-    packages_to_install=["ultralytics"]
-)
-export_op = components.func_to_container_op(
-    export_model,
-    base_image="python:3.9",
-    packages_to_install=["ultralytics","minio"]
+    download_dataset_op,
+    train_model_op,
+    validate_model_op,
+    predict_model_op,
+    export_model_op,
 )
 
 @dsl.pipeline(
-    name="yolov8-object-detection-pipeline-v1",
-    description="Download → Train → Validate → Predict → Export to MinIO"
+    name="yolov8-object-detection-pipeline",
+    description="Download → Train → Validate → Predict → Export→MinIO"
 )
 def yolov8_pipeline(
     api_key: str = "Ta6oCmhCi264c7zHQyZM",
@@ -48,24 +19,40 @@ def yolov8_pipeline(
     model_name: str = "yolov8s.pt",
     epochs: int = 10,
     output_dir: str = "/mnt/data/output",
+    # MinIO params (if you want override defaults)
     minio_endpoint: str = "minio-service.kubeflow.svc.cluster.local:9000",
     minio_access_key: str = "minio",
     minio_secret_key: str = "minio123",
     bucket: str = "models-trained"
 ):
-    ds      = download_op(api_key, workspace, project_name, version_number)
-    train   = train_op(model_name, ds.output, epochs, output_dir).after(ds)
-    validate_op(train.output, ds.output).after(train)
-    predict_op(train.output, ds.output).after(train)
-    export_op(
-        train.output,
-        "onnx", True,
-        minio_endpoint, minio_access_key, minio_secret_key, bucket
-    ).after(train)
+    ds = download_dataset_op(
+        api_key=api_key,
+        workspace=workspace,
+        project_name=project_name,
+        version_number=version_number
+    )
 
-# if __name__ == "__main__":
-#     kfp.compiler.Compiler().compile(
-#         pipeline_func=yolov8_pipeline,
-#         package_path="yolov8_pipeline.yaml"
-#     )
-#     print("✅ Compiled to yolov8_pipeline.yaml")
+    tr = train_model_op(
+        model_name=model_name,
+        dataset_path=ds.output,
+        epochs=epochs,
+        output_dir=output_dir
+    )
+
+    validate_model_op(
+        model_path=tr.output,
+        dataset_path=ds.output
+    )
+
+    predict_model_op(
+        model_path=tr.output,
+        dataset_path=ds.output
+    )
+
+    export_model_op(
+        model_path=tr.output,
+        minio_endpoint=minio_endpoint,
+        minio_access_key=minio_access_key,
+        minio_secret_key=minio_secret_key,
+        bucket=bucket
+    )
