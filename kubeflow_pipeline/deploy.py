@@ -1,26 +1,24 @@
-# deploy.py
-
 import kfp
 from kfp.compiler import Compiler
-from pipeline import yolov8_pipeline
+from kubeflow_pipeline.pipeline import yolov8_pipeline
 
 if __name__ == "__main__":
-    # 1) Compile to v1 YAML
+    # 1) Compile
     Compiler().compile(
         pipeline_func=yolov8_pipeline,
         package_path="yolov8_pipeline.yaml"
     )
-    print("✅ Compiled v1 pipeline to yolov8_pipeline.yaml")
+    print("✅ Compiled YAML")
 
-    # 2) Upload to Kubeflow Pipelines
-    client = kfp.Client()  # auto-detect in-cluster or via port-forward
-    pipeline_info = client.upload_pipeline(
+    # 2) Upload
+    client = kfp.Client()
+    info = client.upload_pipeline(
         pipeline_package_path="yolov8_pipeline.yaml",
-        pipeline_name="Object Detection Testing"
+        pipeline_name="Object Detection Test_v1"
     )
-    print(f"✅ Uploaded pipeline: id={pipeline_info.id}")
+    print("✅ Uploaded pipeline.id=", info.id)
 
-    # 3) Launch a run immediately
+    # 3) Run
     run = client.create_run_from_pipeline_func(
         yolov8_pipeline,
         arguments={
