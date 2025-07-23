@@ -1,6 +1,7 @@
 import os
+import kfp
 from kfp import dsl
-from kfp import components
+import kfp.components as components
 
 # Components
 def download_dataset(api_key, workspace, project_name, version_number, export_format="yolov8"):
