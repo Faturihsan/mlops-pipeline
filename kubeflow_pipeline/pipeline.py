@@ -65,7 +65,9 @@ def yolov8_pipeline(api_key="Ta6oCmhCi264c7zHQyZM", workspace="zx-r6lu6",
                     minio_access_key="minio", minio_secret_key="minio123", bucket="models-trained"):
 
     ds = download_op(api_key, workspace, project_name, version_number)
-    tr = train_op(model_name, ds.output, epochs, output_dir).after(ds)
-    validate_op(tr.output, ds.output).after(tr)
-    predict_op(tr.output, ds.output).after(tr)
-    export_op(tr.output, "onnx", True, minio_endpoint, minio_access_key, minio_secret_key, bucket).after(tr)
+    tr = train_op(model_name, ds.outputs["output"], epochs, output_dir).after(ds)
+
+    validate_op(tr.outputs["output"], ds.outputs["output"])
+    predict_op(tr.outputs["output"], ds.outputs["output"])
+    export_op(tr.outputs["output"], ...)
+
