@@ -2,7 +2,7 @@
 
 import kfp
 from kfp import dsl
-import kfp.components import components
+import kfp.components as components
 
 from components import (
     download_dataset,
