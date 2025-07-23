@@ -1,0 +1,567 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: yolov8-object-detection-pipeline-v1-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.22, pipelines.kubeflow.org/pipeline_compilation_time: '2025-07-23T16:51:54.172023',
+    pipelines.kubeflow.org/pipeline_spec: '{"inputs": [{"default": "Ta6oCmhCi264c7zHQyZM",
+      "name": "api_key", "optional": true}, {"default": "zx-r6lu6", "name": "workspace",
+      "optional": true}, {"default": "student-and-non-student", "name": "project_name",
+      "optional": true}, {"default": "1", "name": "version_number", "optional": true},
+      {"default": "yolov8s.pt", "name": "model_name", "optional": true}, {"default":
+      "10", "name": "epochs", "optional": true}, {"default": "/mnt/data/output", "name":
+      "output_dir", "optional": true}, {"default": "minio-service.kubeflow.svc.cluster.local:9000",
+      "name": "minio_endpoint", "optional": true}, {"default": "minio", "name": "minio_access_key",
+      "optional": true}, {"default": "minio123", "name": "minio_secret_key", "optional":
+      true}, {"default": "models-trained", "name": "bucket", "optional": true}], "name":
+      "yolov8-object-detection-pipeline-v1"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.22}
+spec:
+  entrypoint: yolov8-object-detection-pipeline-v1
+  templates:
+  - name: download-dataset
+    container:
+      args: [--api-key, '{{inputs.parameters.api_key}}', --workspace, '{{inputs.parameters.workspace}}',
+        --project-name, '{{inputs.parameters.project_name}}', --version-number, '{{inputs.parameters.version_number}}',
+        --export-format, yolov8, '----output-paths', /tmp/outputs/dataset_path/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'roboflow' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+        --no-warn-script-location 'roboflow' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def download_dataset(api_key,
+                             workspace,
+                             project_name,
+                             version_number,
+                             export_format = "yolov8"):
+            """
+            Downloads a dataset from Roboflow and returns the local path.
+            """
+            from roboflow import Roboflow
+            rf = Roboflow(api_key=api_key)
+            project = rf.workspace(workspace).project(project_name)
+            version = project.version(version_number)
+            dataset = version.download(export_format)
+            return (dataset.location,)  # dataset.location is the folder path
+
+        def _serialize_str(str_value: str) -> str:
+            if not isinstance(str_value, str):
+                raise TypeError('Value "{}" has type "{}" instead of str.'.format(
+                    str(str_value), str(type(str_value))))
+            return str_value
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Download dataset', description='Downloads a dataset from Roboflow and returns the local path.')
+        _parser.add_argument("--api-key", dest="api_key", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--workspace", dest="workspace", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--project-name", dest="project_name", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--version-number", dest="version_number", type=int, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--export-format", dest="export_format", type=str, required=False, default=argparse.SUPPRESS)
+        _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=1)
+        _parsed_args = vars(_parser.parse_args())
+        _output_files = _parsed_args.pop("_output_paths", [])
+
+        _outputs = download_dataset(**_parsed_args)
+
+        _output_serializers = [
+            _serialize_str,
+
+        ]
+
+        import os
+        for idx, output_file in enumerate(_output_files):
+            try:
+                os.makedirs(os.path.dirname(output_file))
+            except OSError:
+                pass
+            with open(output_file, 'w') as f:
+                f.write(_output_serializers[idx](_outputs[idx]))
+      image: python:3.9
+    inputs:
+      parameters:
+      - {name: api_key}
+      - {name: project_name}
+      - {name: version_number}
+      - {name: workspace}
+    outputs:
+      parameters:
+      - name: download-dataset-dataset_path
+        valueFrom: {path: /tmp/outputs/dataset_path/data}
+      artifacts:
+      - {name: download-dataset-dataset_path, path: /tmp/outputs/dataset_path/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"description": "Downloads
+          a dataset from Roboflow and returns the local path.", "implementation":
+          {"container": {"args": ["--api-key", {"inputValue": "api_key"}, "--workspace",
+          {"inputValue": "workspace"}, "--project-name", {"inputValue": "project_name"},
+          "--version-number", {"inputValue": "version_number"}, {"if": {"cond": {"isPresent":
+          "export_format"}, "then": ["--export-format", {"inputValue": "export_format"}]}},
+          "----output-paths", {"outputPath": "dataset_path"}], "command": ["sh", "-c",
+          "(PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+          ''roboflow'' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+          --no-warn-script-location ''roboflow'' --user) && \"$0\" \"$@\"", "sh",
+          "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def download_dataset(api_key,\n                     workspace,\n                     project_name,\n                     version_number,\n                     export_format
+          = \"yolov8\"):\n    \"\"\"\n    Downloads a dataset from Roboflow and returns
+          the local path.\n    \"\"\"\n    from roboflow import Roboflow\n    rf =
+          Roboflow(api_key=api_key)\n    project = rf.workspace(workspace).project(project_name)\n    version
+          = project.version(version_number)\n    dataset = version.download(export_format)\n    return
+          (dataset.location,)  # dataset.location is the folder path\n\ndef _serialize_str(str_value:
+          str) -> str:\n    if not isinstance(str_value, str):\n        raise TypeError(''Value
+          \"{}\" has type \"{}\" instead of str.''.format(\n            str(str_value),
+          str(type(str_value))))\n    return str_value\n\nimport argparse\n_parser
+          = argparse.ArgumentParser(prog=''Download dataset'', description=''Downloads
+          a dataset from Roboflow and returns the local path.'')\n_parser.add_argument(\"--api-key\",
+          dest=\"api_key\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--workspace\",
+          dest=\"workspace\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--project-name\",
+          dest=\"project_name\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--version-number\",
+          dest=\"version_number\", type=int, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--export-format\",
+          dest=\"export_format\", type=str, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\",
+          dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = download_dataset(**_parsed_args)\n\n_output_serializers
+          = [\n    _serialize_str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "python:3.9"}}, "inputs": [{"name": "api_key", "type": "String"},
+          {"name": "workspace", "type": "String"}, {"name": "project_name", "type":
+          "String"}, {"name": "version_number", "type": "Integer"}, {"default": "yolov8",
+          "name": "export_format", "optional": true, "type": "String"}], "name": "Download
+          dataset", "outputs": [{"name": "dataset_path", "type": "String"}]}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"api_key": "{{inputs.parameters.api_key}}",
+          "export_format": "yolov8", "project_name": "{{inputs.parameters.project_name}}",
+          "version_number": "{{inputs.parameters.version_number}}", "workspace": "{{inputs.parameters.workspace}}"}'}
+  - name: export-model
+    container:
+      args:
+      - --model-path
+      - '{{inputs.parameters.train-model-model_path}}'
+      - --export-format
+      - onnx
+      - --nms
+      - "True"
+      - --minio-endpoint
+      - '{{inputs.parameters.minio_endpoint}}'
+      - --minio-access-key
+      - '{{inputs.parameters.minio_access_key}}'
+      - --minio-secret-key
+      - '{{inputs.parameters.minio_secret_key}}'
+      - --bucket
+      - '{{inputs.parameters.bucket}}'
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'ultralytics' 'minio' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install
+        --quiet --no-warn-script-location 'ultralytics' 'minio' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def export_model(model_path, export_format="onnx", nms=True,
+                         minio_endpoint="minio-service.kubeflow.svc.cluster.local:9000",
+                         minio_access_key="minio", minio_secret_key="minio123", bucket="models-trained"):
+            from ultralytics import YOLO
+            from minio import Minio
+            import os
+
+            YOLO(model_path).export(format=export_format, nms=nms)
+            base = os.path.splitext(model_path)[0]
+            onnx_path = f"{base}.{export_format}"
+
+            client = Minio(endpoint=minio_endpoint, access_key=minio_access_key,
+                           secret_key=minio_secret_key, secure=False)
+            if not client.bucket_exists(bucket):
+                client.make_bucket(bucket)
+            client.fput_object(bucket, os.path.basename(onnx_path), onnx_path)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Export model', description='')
+        _parser.add_argument("--model-path", dest="model_path", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--export-format", dest="export_format", type=str, required=False, default=argparse.SUPPRESS)
+        _parser.add_argument("--nms", dest="nms", type=str, required=False, default=argparse.SUPPRESS)
+        _parser.add_argument("--minio-endpoint", dest="minio_endpoint", type=str, required=False, default=argparse.SUPPRESS)
+        _parser.add_argument("--minio-access-key", dest="minio_access_key", type=str, required=False, default=argparse.SUPPRESS)
+        _parser.add_argument("--minio-secret-key", dest="minio_secret_key", type=str, required=False, default=argparse.SUPPRESS)
+        _parser.add_argument("--bucket", dest="bucket", type=str, required=False, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = export_model(**_parsed_args)
+      image: python:3.9
+    inputs:
+      parameters:
+      - {name: bucket}
+      - {name: minio_access_key}
+      - {name: minio_endpoint}
+      - {name: minio_secret_key}
+      - {name: train-model-model_path}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--model-path", {"inputValue": "model_path"}, {"if": {"cond":
+          {"isPresent": "export_format"}, "then": ["--export-format", {"inputValue":
+          "export_format"}]}}, {"if": {"cond": {"isPresent": "nms"}, "then": ["--nms",
+          {"inputValue": "nms"}]}}, {"if": {"cond": {"isPresent": "minio_endpoint"},
+          "then": ["--minio-endpoint", {"inputValue": "minio_endpoint"}]}}, {"if":
+          {"cond": {"isPresent": "minio_access_key"}, "then": ["--minio-access-key",
+          {"inputValue": "minio_access_key"}]}}, {"if": {"cond": {"isPresent": "minio_secret_key"},
+          "then": ["--minio-secret-key", {"inputValue": "minio_secret_key"}]}}, {"if":
+          {"cond": {"isPresent": "bucket"}, "then": ["--bucket", {"inputValue": "bucket"}]}}],
+          "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip
+          install --quiet --no-warn-script-location ''ultralytics'' ''minio'' || PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''ultralytics''
+          ''minio'' --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def export_model(model_path, export_format=\"onnx\", nms=True,\n                 minio_endpoint=\"minio-service.kubeflow.svc.cluster.local:9000\",\n                 minio_access_key=\"minio\",
+          minio_secret_key=\"minio123\", bucket=\"models-trained\"):\n    from ultralytics
+          import YOLO\n    from minio import Minio\n    import os\n\n    YOLO(model_path).export(format=export_format,
+          nms=nms)\n    base = os.path.splitext(model_path)[0]\n    onnx_path = f\"{base}.{export_format}\"\n\n    client
+          = Minio(endpoint=minio_endpoint, access_key=minio_access_key,\n                   secret_key=minio_secret_key,
+          secure=False)\n    if not client.bucket_exists(bucket):\n        client.make_bucket(bucket)\n    client.fput_object(bucket,
+          os.path.basename(onnx_path), onnx_path)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Export
+          model'', description='''')\n_parser.add_argument(\"--model-path\", dest=\"model_path\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--export-format\",
+          dest=\"export_format\", type=str, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"--nms\",
+          dest=\"nms\", type=str, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"--minio-endpoint\",
+          dest=\"minio_endpoint\", type=str, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"--minio-access-key\",
+          dest=\"minio_access_key\", type=str, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"--minio-secret-key\",
+          dest=\"minio_secret_key\", type=str, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"--bucket\",
+          dest=\"bucket\", type=str, required=False, default=argparse.SUPPRESS)\n_parsed_args
+          = vars(_parser.parse_args())\n\n_outputs = export_model(**_parsed_args)\n"],
+          "image": "python:3.9"}}, "inputs": [{"name": "model_path"}, {"default":
+          "onnx", "name": "export_format", "optional": true}, {"default": "True",
+          "name": "nms", "optional": true}, {"default": "minio-service.kubeflow.svc.cluster.local:9000",
+          "name": "minio_endpoint", "optional": true}, {"default": "minio", "name":
+          "minio_access_key", "optional": true}, {"default": "minio123", "name": "minio_secret_key",
+          "optional": true}, {"default": "models-trained", "name": "bucket", "optional":
+          true}], "name": "Export model"}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"bucket": "{{inputs.parameters.bucket}}",
+          "export_format": "onnx", "minio_access_key": "{{inputs.parameters.minio_access_key}}",
+          "minio_endpoint": "{{inputs.parameters.minio_endpoint}}", "minio_secret_key":
+          "{{inputs.parameters.minio_secret_key}}", "model_path": "{{inputs.parameters.train-model-model_path}}",
+          "nms": "True"}'}
+  - name: predict-model
+    container:
+      args:
+      - --model-path
+      - '{{inputs.parameters.train-model-model_path}}'
+      - --dataset-path
+      - '{{inputs.parameters.download-dataset-dataset_path}}'
+      - --conf
+      - '0.25'
+      - --save
+      - "True"
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'ultralytics' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+        --no-warn-script-location 'ultralytics' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def predict_model(model_path, dataset_path, conf=0.25, save=True):
+            from ultralytics import YOLO
+            import os
+            source = os.path.join(dataset_path, "test", "images")
+            YOLO(model_path).predict(source=source, conf=conf, save=save)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Predict model', description='')
+        _parser.add_argument("--model-path", dest="model_path", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--dataset-path", dest="dataset_path", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--conf", dest="conf", type=str, required=False, default=argparse.SUPPRESS)
+        _parser.add_argument("--save", dest="save", type=str, required=False, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = predict_model(**_parsed_args)
+      image: python:3.9
+    inputs:
+      parameters:
+      - {name: download-dataset-dataset_path}
+      - {name: train-model-model_path}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--model-path", {"inputValue": "model_path"}, "--dataset-path",
+          {"inputValue": "dataset_path"}, {"if": {"cond": {"isPresent": "conf"}, "then":
+          ["--conf", {"inputValue": "conf"}]}}, {"if": {"cond": {"isPresent": "save"},
+          "then": ["--save", {"inputValue": "save"}]}}], "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''ultralytics''
+          || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+          ''ultralytics'' --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def predict_model(model_path, dataset_path, conf=0.25, save=True):\n    from
+          ultralytics import YOLO\n    import os\n    source = os.path.join(dataset_path,
+          \"test\", \"images\")\n    YOLO(model_path).predict(source=source, conf=conf,
+          save=save)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Predict
+          model'', description='''')\n_parser.add_argument(\"--model-path\", dest=\"model_path\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--dataset-path\",
+          dest=\"dataset_path\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--conf\",
+          dest=\"conf\", type=str, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"--save\",
+          dest=\"save\", type=str, required=False, default=argparse.SUPPRESS)\n_parsed_args
+          = vars(_parser.parse_args())\n\n_outputs = predict_model(**_parsed_args)\n"],
+          "image": "python:3.9"}}, "inputs": [{"name": "model_path"}, {"name": "dataset_path"},
+          {"default": "0.25", "name": "conf", "optional": true}, {"default": "True",
+          "name": "save", "optional": true}], "name": "Predict model"}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"conf": "0.25", "dataset_path":
+          "{{inputs.parameters.download-dataset-dataset_path}}", "model_path": "{{inputs.parameters.train-model-model_path}}",
+          "save": "True"}'}
+  - name: train-model
+    container:
+      args: [--model-name, '{{inputs.parameters.model_name}}', --dataset-path, '{{inputs.parameters.download-dataset-dataset_path}}',
+        --epochs, '{{inputs.parameters.epochs}}', --output-dir, '{{inputs.parameters.output_dir}}',
+        '----output-paths', /tmp/outputs/model_path/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'ultralytics' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+        --no-warn-script-location 'ultralytics' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def train_model(model_name, dataset_path, epochs, output_dir):
+            from ultralytics import YOLO
+            import os
+            data_yaml = os.path.join(dataset_path, "data.yaml")
+            model = YOLO(model_name)
+            model.train(data=data_yaml, epochs=epochs, project=output_dir, plots=True)
+            return (os.path.join(output_dir, "runs", "detect", "train", "weights", "best.pt"),)
+
+        def _serialize_str(str_value: str) -> str:
+            if not isinstance(str_value, str):
+                raise TypeError('Value "{}" has type "{}" instead of str.'.format(
+                    str(str_value), str(type(str_value))))
+            return str_value
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Train model', description='')
+        _parser.add_argument("--model-name", dest="model_name", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--dataset-path", dest="dataset_path", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--epochs", dest="epochs", type=int, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-dir", dest="output_dir", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=1)
+        _parsed_args = vars(_parser.parse_args())
+        _output_files = _parsed_args.pop("_output_paths", [])
+
+        _outputs = train_model(**_parsed_args)
+
+        _output_serializers = [
+            _serialize_str,
+
+        ]
+
+        import os
+        for idx, output_file in enumerate(_output_files):
+            try:
+                os.makedirs(os.path.dirname(output_file))
+            except OSError:
+                pass
+            with open(output_file, 'w') as f:
+                f.write(_output_serializers[idx](_outputs[idx]))
+      image: python:3.9
+    inputs:
+      parameters:
+      - {name: download-dataset-dataset_path}
+      - {name: epochs}
+      - {name: model_name}
+      - {name: output_dir}
+    outputs:
+      parameters:
+      - name: train-model-model_path
+        valueFrom: {path: /tmp/outputs/model_path/data}
+      artifacts:
+      - {name: train-model-model_path, path: /tmp/outputs/model_path/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--model-name", {"inputValue": "model_name"}, "--dataset-path",
+          {"inputValue": "dataset_path"}, "--epochs", {"inputValue": "epochs"}, "--output-dir",
+          {"inputValue": "output_dir"}, "----output-paths", {"outputPath": "model_path"}],
+          "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip
+          install --quiet --no-warn-script-location ''ultralytics'' || PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''ultralytics''
+          --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def train_model(model_name, dataset_path, epochs, output_dir):\n    from
+          ultralytics import YOLO\n    import os\n    data_yaml = os.path.join(dataset_path,
+          \"data.yaml\")\n    model = YOLO(model_name)\n    model.train(data=data_yaml,
+          epochs=epochs, project=output_dir, plots=True)\n    return (os.path.join(output_dir,
+          \"runs\", \"detect\", \"train\", \"weights\", \"best.pt\"),)\n\ndef _serialize_str(str_value:
+          str) -> str:\n    if not isinstance(str_value, str):\n        raise TypeError(''Value
+          \"{}\" has type \"{}\" instead of str.''.format(\n            str(str_value),
+          str(type(str_value))))\n    return str_value\n\nimport argparse\n_parser
+          = argparse.ArgumentParser(prog=''Train model'', description='''')\n_parser.add_argument(\"--model-name\",
+          dest=\"model_name\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--dataset-path\",
+          dest=\"dataset_path\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--epochs\",
+          dest=\"epochs\", type=int, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-dir\",
+          dest=\"output_dir\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\",
+          dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = train_model(**_parsed_args)\n\n_output_serializers
+          = [\n    _serialize_str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "python:3.9"}}, "inputs": [{"name": "model_name", "type": "String"},
+          {"name": "dataset_path", "type": "String"}, {"name": "epochs", "type": "Integer"},
+          {"name": "output_dir", "type": "String"}], "name": "Train model", "outputs":
+          [{"name": "model_path", "type": "String"}]}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"dataset_path": "{{inputs.parameters.download-dataset-dataset_path}}",
+          "epochs": "{{inputs.parameters.epochs}}", "model_name": "{{inputs.parameters.model_name}}",
+          "output_dir": "{{inputs.parameters.output_dir}}"}'}
+  - name: validate-model
+    container:
+      args: [--model-path, '{{inputs.parameters.train-model-model_path}}', --dataset-path,
+        '{{inputs.parameters.download-dataset-dataset_path}}']
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'ultralytics' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+        --no-warn-script-location 'ultralytics' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def validate_model(model_path, dataset_path):
+            from ultralytics import YOLO
+            import os
+            data_yaml = os.path.join(dataset_path, "data.yaml")
+            YOLO(model_path).val(data=data_yaml)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Validate model', description='')
+        _parser.add_argument("--model-path", dest="model_path", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--dataset-path", dest="dataset_path", type=str, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = validate_model(**_parsed_args)
+      image: python:3.9
+    inputs:
+      parameters:
+      - {name: download-dataset-dataset_path}
+      - {name: train-model-model_path}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--model-path", {"inputValue": "model_path"}, "--dataset-path",
+          {"inputValue": "dataset_path"}], "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''ultralytics''
+          || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+          ''ultralytics'' --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def validate_model(model_path, dataset_path):\n    from ultralytics import
+          YOLO\n    import os\n    data_yaml = os.path.join(dataset_path, \"data.yaml\")\n    YOLO(model_path).val(data=data_yaml)\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Validate model'', description='''')\n_parser.add_argument(\"--model-path\",
+          dest=\"model_path\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--dataset-path\",
+          dest=\"dataset_path\", type=str, required=True, default=argparse.SUPPRESS)\n_parsed_args
+          = vars(_parser.parse_args())\n\n_outputs = validate_model(**_parsed_args)\n"],
+          "image": "python:3.9"}}, "inputs": [{"name": "model_path"}, {"name": "dataset_path"}],
+          "name": "Validate model"}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"dataset_path": "{{inputs.parameters.download-dataset-dataset_path}}",
+          "model_path": "{{inputs.parameters.train-model-model_path}}"}'}
+  - name: yolov8-object-detection-pipeline-v1
+    inputs:
+      parameters:
+      - {name: api_key}
+      - {name: bucket}
+      - {name: epochs}
+      - {name: minio_access_key}
+      - {name: minio_endpoint}
+      - {name: minio_secret_key}
+      - {name: model_name}
+      - {name: output_dir}
+      - {name: project_name}
+      - {name: version_number}
+      - {name: workspace}
+    dag:
+      tasks:
+      - name: download-dataset
+        template: download-dataset
+        arguments:
+          parameters:
+          - {name: api_key, value: '{{inputs.parameters.api_key}}'}
+          - {name: project_name, value: '{{inputs.parameters.project_name}}'}
+          - {name: version_number, value: '{{inputs.parameters.version_number}}'}
+          - {name: workspace, value: '{{inputs.parameters.workspace}}'}
+      - name: export-model
+        template: export-model
+        dependencies: [train-model]
+        arguments:
+          parameters:
+          - {name: bucket, value: '{{inputs.parameters.bucket}}'}
+          - {name: minio_access_key, value: '{{inputs.parameters.minio_access_key}}'}
+          - {name: minio_endpoint, value: '{{inputs.parameters.minio_endpoint}}'}
+          - {name: minio_secret_key, value: '{{inputs.parameters.minio_secret_key}}'}
+          - {name: train-model-model_path, value: '{{tasks.train-model.outputs.parameters.train-model-model_path}}'}
+      - name: predict-model
+        template: predict-model
+        dependencies: [download-dataset, train-model]
+        arguments:
+          parameters:
+          - {name: download-dataset-dataset_path, value: '{{tasks.download-dataset.outputs.parameters.download-dataset-dataset_path}}'}
+          - {name: train-model-model_path, value: '{{tasks.train-model.outputs.parameters.train-model-model_path}}'}
+      - name: train-model
+        template: train-model
+        dependencies: [download-dataset]
+        arguments:
+          parameters:
+          - {name: download-dataset-dataset_path, value: '{{tasks.download-dataset.outputs.parameters.download-dataset-dataset_path}}'}
+          - {name: epochs, value: '{{inputs.parameters.epochs}}'}
+          - {name: model_name, value: '{{inputs.parameters.model_name}}'}
+          - {name: output_dir, value: '{{inputs.parameters.output_dir}}'}
+      - name: validate-model
+        template: validate-model
+        dependencies: [download-dataset, train-model]
+        arguments:
+          parameters:
+          - {name: download-dataset-dataset_path, value: '{{tasks.download-dataset.outputs.parameters.download-dataset-dataset_path}}'}
+          - {name: train-model-model_path, value: '{{tasks.train-model.outputs.parameters.train-model-model_path}}'}
+  arguments:
+    parameters:
+    - {name: api_key, value: Ta6oCmhCi264c7zHQyZM}
+    - {name: workspace, value: zx-r6lu6}
+    - {name: project_name, value: student-and-non-student}
+    - {name: version_number, value: '1'}
+    - {name: model_name, value: yolov8s.pt}
+    - {name: epochs, value: '10'}
+    - {name: output_dir, value: /mnt/data/output}
+    - {name: minio_endpoint, value: 'minio-service.kubeflow.svc.cluster.local:9000'}
+    - {name: minio_access_key, value: minio}
+    - {name: minio_secret_key, value: minio123}
+    - {name: bucket, value: models-trained}
+  serviceAccountName: pipeline-runner

@@ -6,21 +6,28 @@ from typing import NamedTuple
 
 
 # Components
-def download_dataset(api_key: str, workspace: str, project_name: str, version_number: int, export_format: str = "yolov8") -> NamedTuple("Outputs", [("dataset_path", str)]):
+def download_dataset(api_key: str,
+                     workspace: str,
+                     project_name: str,
+                     version_number: int,
+                     export_format: str = "yolov8") -> NamedTuple("Outputs", [("dataset_path", str)]):
+    """
+    Downloads a dataset from Roboflow and returns the local path.
+    """
     from roboflow import Roboflow
     rf = Roboflow(api_key=api_key)
     project = rf.workspace(workspace).project(project_name)
     version = project.version(version_number)
     dataset = version.download(export_format)
-    return (dataset.location,)
+    return (dataset.location,)  # dataset.location is the folder path
 
-def train_model(model_name, dataset_path, epochs, output_dir):
+def train_model(model_name: str, dataset_path: str, epochs: int, output_dir: str) -> NamedTuple("Outputs", [("model_path", str)]):
     from ultralytics import YOLO
     import os
     data_yaml = os.path.join(dataset_path, "data.yaml")
     model = YOLO(model_name)
     model.train(data=data_yaml, epochs=epochs, project=output_dir, plots=True)
-    return os.path.join(output_dir, "runs", "detect", "train", "weights", "best.pt")
+    return (os.path.join(output_dir, "runs", "detect", "train", "weights", "best.pt"),)
 
 def validate_model(model_path, dataset_path):
     from ultralytics import YOLO
@@ -66,9 +73,9 @@ def yolov8_pipeline(api_key="Ta6oCmhCi264c7zHQyZM", workspace="zx-r6lu6",
                     minio_access_key="minio", minio_secret_key="minio123", bucket="models-trained"):
 
     ds = download_op(api_key, workspace, project_name, version_number)
-    tr = train_op(model_name, ds.outputs["dataset_path"], epochs, output_dir).after(ds)
-    validate_op(tr.outputs["output"], ds.outputs["dataset_path"]).after(tr)
-    predict_op(tr.outputs["output"], ds.outputs["dataset_path"]).after(tr)
-    export_op(tr.outputs["output"], "onnx", True, minio_endpoint, minio_access_key, minio_secret_key, bucket).after(tr)
+    tr = train_op(model_name=model_name, dataset_path=ds.outputs["dataset_path"], epochs=epochs, output_dir=output_dir).after(ds)
+    validate_op(model_path=tr.outputs["model_path"], dataset_path=ds.outputs["dataset_path"]).after(tr)
+    predict_op(model_path=tr.outputs["model_path"], dataset_path=ds.outputs["dataset_path"]).after(tr)
+    export_op(model_path=tr.outputs["model_path"], export_format="onnx", nms=True, minio_endpoint=minio_endpoint,minio_access_key=minio_access_key,   minio_secret_key=minio_secret_key, bucket=bucket).after(tr)
 
 
