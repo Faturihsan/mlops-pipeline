@@ -1,108 +1,69 @@
-# pipeline.py
-
-import kfp
+import os
 from kfp import dsl
-import kfp.components as components
+from kfp import components
 
-from components import (
-    download_dataset,
-    train_model,
-    validate_model,
-    predict_model,
-    export_model
-)
+# Components
+def download_dataset(api_key, workspace, project_name, version_number, export_format="yolov8"):
+    from roboflow import Roboflow
+    rf = Roboflow(api_key=api_key)
+    project = rf.workspace(workspace).project(project_name)
+    version = project.version(version_number)
+    dataset = version.download(export_format)
+    return dataset.location
 
-# wrap raw functions into ContainerOps
-download_op = components.create_component_from_func(
-    download_dataset,
-    base_image="python:3.9",
-    packages_to_install=["roboflow"]
-)
+def train_model(model_name, dataset_path, epochs, output_dir):
+    from ultralytics import YOLO
+    import os
+    data_yaml = os.path.join(dataset_path, "data.yaml")
+    model = YOLO(model_name)
+    model.train(data=data_yaml, epochs=epochs, project=output_dir, plots=True)
+    return os.path.join(output_dir, "runs", "detect", "train", "weights", "best.pt")
 
-train_op = components.create_component_from_func(
-    train_model,
-    base_image="python:3.9",
-    packages_to_install=["ultralytics"]
-)
+def validate_model(model_path, dataset_path):
+    from ultralytics import YOLO
+    import os
+    data_yaml = os.path.join(dataset_path, "data.yaml")
+    YOLO(model_path).val(data=data_yaml)
 
-validate_op = components.create_component_from_func(
-    validate_model,
-    base_image="python:3.9",
-    packages_to_install=["ultralytics"]
-)
+def predict_model(model_path, dataset_path, conf=0.25, save=True):
+    from ultralytics import YOLO
+    import os
+    source = os.path.join(dataset_path, "test", "images")
+    YOLO(model_path).predict(source=source, conf=conf, save=save)
 
-predict_op = components.create_component_from_func(
-    predict_model,
-    base_image="python:3.9",
-    packages_to_install=["ultralytics"]
-)
+def export_model(model_path, export_format="onnx", nms=True,
+                 minio_endpoint="minio-service.kubeflow.svc.cluster.local:9000",
+                 minio_access_key="minio", minio_secret_key="minio123", bucket="models-trained"):
+    from ultralytics import YOLO
+    from minio import Minio
+    import os
 
-export_op = components.create_component_from_func(
-    export_model,
-    base_image="python:3.9",
-    packages_to_install=["ultralytics", "minio"]
-)
+    YOLO(model_path).export(format=export_format, nms=nms)
+    base = os.path.splitext(model_path)[0]
+    onnx_path = f"{base}.{export_format}"
 
-@dsl.pipeline(
-    name="yolov8-object-detection-pipeline-v1",
-    description="Download → Train → Validate → Predict → Export to MinIO"
-)
-def yolov8_pipeline(
-    api_key: str = "Ta6oCmhCi264c7zHQyZM",
-    workspace: str = "zx-r6lu6",
-    project_name: str = "student-and-non-student",
-    version_number: int = 1,
-    model_name: str = "yolov8s.pt",
-    epochs: int = 10,
-    output_dir: str = "/mnt/data/output",
-    minio_endpoint: str = "minio-service.kubeflow.svc.cluster.local:9000",
-    minio_access_key: str = "minio",
-    minio_secret_key: str = "minio123",
-    bucket: str = "models-trained"
-):
-    # 1) Download
-    ds = download_op(
-        api_key=api_key,
-        workspace=workspace,
-        project_name=project_name,
-        version_number=version_number
-    )
+    client = Minio(endpoint=minio_endpoint, access_key=minio_access_key,
+                   secret_key=minio_secret_key, secure=False)
+    if not client.bucket_exists(bucket):
+        client.make_bucket(bucket)
+    client.fput_object(bucket, os.path.basename(onnx_path), onnx_path)
 
-    # 2) Train (after Download)
-    train = train_op(
-        model_name=model_name,
-        dataset_path=ds.output,
-        epochs=epochs,
-        output_dir=output_dir
-    ).after(ds)
+# Create container components
+download_op = components.create_component_from_func(download_dataset, base_image="python:3.9", packages_to_install=["roboflow"])
+train_op    = components.create_component_from_func(train_model, base_image="python:3.9", packages_to_install=["ultralytics"])
+validate_op = components.create_component_from_func(validate_model, base_image="python:3.9", packages_to_install=["ultralytics"])
+predict_op  = components.create_component_from_func(predict_model, base_image="python:3.9", packages_to_install=["ultralytics"])
+export_op   = components.create_component_from_func(export_model, base_image="python:3.9", packages_to_install=["ultralytics", "minio"])
 
-    # 3) Validate (after Train)
-    validate_op(
-        model_path=train.output,
-        dataset_path=ds.output
-    ).after(train)
+@dsl.pipeline(name="yolov8-object-detection-pipeline-v1")
+def yolov8_pipeline(api_key="Ta6oCmhCi264c7zHQyZM", workspace="zx-r6lu6",
+                    project_name="student-and-non-student", version_number=1,
+                    model_name="yolov8s.pt", epochs=10, output_dir="/mnt/data/output",
+                    minio_endpoint="minio-service.kubeflow.svc.cluster.local:9000",
+                    minio_access_key="minio", minio_secret_key="minio123", bucket="models-trained"):
 
-    # 4) Predict (after Validate)
-    predict_op(
-        model_path=train.output,
-        dataset_path=ds.output
-    ).after(train)
-
-    # 5) Export & push to MinIO (after Predict)
-    export_op(
-        model_path=train.output,
-        export_format="onnx",
-        nms=True,
-        minio_endpoint=minio_endpoint,
-        minio_access_key=minio_access_key,
-        minio_secret_key=minio_secret_key,
-        bucket=bucket
-    ).after(train)
-
-# compile locally if run as script
-# if __name__ == "__main__":
-#     kfp.compiler.Compiler().compile(
-#         pipeline_func=yolov8_pipeline,
-#         package_path="yolov8_pipeline.yaml"
-#     )
-#     print("✅ Compiled v1 pipeline to yolov8_pipeline.yaml")
+    ds = download_op(api_key, workspace, project_name, version_number)
+    tr = train_op(model_name, ds.output, epochs, output_dir).after(ds)
+    validate_op(tr.output, ds.output).after(tr)
+    predict_op(tr.output, ds.output).after(tr)
+    export_op(tr.output, "onnx", True, minio_endpoint, minio_access_key, minio_secret_key, bucket).after(tr)
