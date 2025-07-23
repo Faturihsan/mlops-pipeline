@@ -2,16 +2,17 @@ import os
 import kfp
 from kfp import dsl
 from kfp.components import func_to_container_op
+from typing import NamedTuple
 
 
 # Components
-def download_dataset(api_key, workspace, project_name, version_number, export_format="yolov8"):
+def download_dataset(api_key: str, workspace: str, project_name: str, version_number: int, export_format: str = "yolov8") -> NamedTuple("Outputs", [("dataset_path", str)]):
     from roboflow import Roboflow
     rf = Roboflow(api_key=api_key)
     project = rf.workspace(workspace).project(project_name)
     version = project.version(version_number)
     dataset = version.download(export_format)
-    return dataset.location
+    return (dataset.location,)
 
 def train_model(model_name, dataset_path, epochs, output_dir):
     from ultralytics import YOLO
@@ -65,9 +66,9 @@ def yolov8_pipeline(api_key="Ta6oCmhCi264c7zHQyZM", workspace="zx-r6lu6",
                     minio_access_key="minio", minio_secret_key="minio123", bucket="models-trained"):
 
     ds = download_op(api_key, workspace, project_name, version_number)
-    tr = train_op(model_name, ds.outputs["output"], epochs, output_dir).after(ds)
+    tr = train_op(model_name, ds.outputs["dataset_path"], epochs, output_dir).after(ds)
+    validate_op(tr.outputs["output"], ds.outputs["dataset_path"]).after(tr)
+    predict_op(tr.outputs["output"], ds.outputs["dataset_path"]).after(tr)
+    export_op(tr.outputs["output"], "onnx", True, minio_endpoint, minio_access_key, minio_secret_key, bucket).after(tr)
 
-    validate_op(tr.outputs["output"], ds.outputs["output"])
-    predict_op(tr.outputs["output"], ds.outputs["output"])
-    export_op(tr.outputs["output"], ...)
 
