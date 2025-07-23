@@ -1,7 +1,8 @@
 import os
 import kfp
 from kfp import dsl
-import kfp.components as components
+from kfp.components import func_to_container_op
+
 
 # Components
 def download_dataset(api_key, workspace, project_name, version_number, export_format="yolov8"):
@@ -50,11 +51,11 @@ def export_model(model_path, export_format="onnx", nms=True,
     client.fput_object(bucket, os.path.basename(onnx_path), onnx_path)
 
 # Create container components
-download_op = components.create_component_from_func(download_dataset, base_image="python:3.9", packages_to_install=["roboflow"])
-train_op    = components.create_component_from_func(train_model, base_image="python:3.9", packages_to_install=["ultralytics"])
-validate_op = components.create_component_from_func(validate_model, base_image="python:3.9", packages_to_install=["ultralytics"])
-predict_op  = components.create_component_from_func(predict_model, base_image="python:3.9", packages_to_install=["ultralytics"])
-export_op   = components.create_component_from_func(export_model, base_image="python:3.9", packages_to_install=["ultralytics", "minio"])
+download_op = func_to_container_op(download_dataset, base_image="python:3.9", packages_to_install=["roboflow"])
+train_op    = func_to_container_op(train_model, base_image="python:3.9", packages_to_install=["ultralytics"])
+validate_op = func_to_container_op(validate_model, base_image="python:3.9", packages_to_install=["ultralytics"])
+predict_op  = func_to_container_op(predict_model, base_image="python:3.9", packages_to_install=["ultralytics"])
+export_op   = func_to_container_op(export_model, base_image="python:3.9", packages_to_install=["ultralytics", "minio"])
 
 @dsl.pipeline(name="yolov8-object-detection-pipeline-v1")
 def yolov8_pipeline(api_key="Ta6oCmhCi264c7zHQyZM", workspace="zx-r6lu6",
