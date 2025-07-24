@@ -13,7 +13,7 @@ if __name__ == "__main__":
     client = kfp.Client()
     pipeline_info = client.upload_pipeline(
         pipeline_package_path="yolov8_pipeline.yaml",
-        pipeline_name="Object Detection Test_v1"
+        pipeline_name="Object Detection Pipeline Test"
     )
     print(f"✅ Uploaded pipeline: id={pipeline_info.id}")
 
