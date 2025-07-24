@@ -24,10 +24,25 @@ def download_dataset(api_key: str,
 def train_model(model_name: str, dataset_path: str, epochs: int, output_dir: str) -> NamedTuple("Outputs", [("model_path", str)]):
     from ultralytics import YOLO
     import os
+    import subprocess
+
     data_yaml = os.path.join(dataset_path, "data.yaml")
+    
+    # Make sure the file exists
+    if not os.path.exists(data_yaml):
+        raise FileNotFoundError(f"{data_yaml} not found. Dataset path might be incorrect or missing in volume.")
+
     model = YOLO(model_name)
     model.train(data=data_yaml, epochs=epochs, project=output_dir, plots=True)
+    
+    print("dataset_path =", dataset_path)
+    print("data_yaml =", data_yaml)
+    print("Exists?", os.path.exists(data_yaml))
+    
     return (os.path.join(output_dir, "runs", "detect", "train", "weights", "best.pt"),)
+
+
+    
 
 def validate_model(model_path, dataset_path):
     from ultralytics import YOLO
