@@ -68,11 +68,11 @@ export_op   = func_to_container_op(export_model, base_image="python:3.9", packag
 @dsl.pipeline(name="yolov8-object-detection-pipeline-v1")
 def yolov8_pipeline(api_key="Ta6oCmhCi264c7zHQyZM", workspace="zx-r6lu6",
                     project_name="student-and-non-student", version_number=1,
-                    model_name="yolov8s.pt", epochs=10, output_dir="/mnt/data/output",
+                    model_name="yolov8s.pt", epochs=10, output_dir="/tmp/output",
                     minio_endpoint="minio-service.kubeflow.svc.cluster.local:9000",
                     minio_access_key="minio", minio_secret_key="minio123", bucket="models-trained"):
 
-    ds = download_op(api_key, workspace, project_name, version_number)
+    ds = download_op(api_key, workspace, project_name, version_number).set_caching_options(enable_caching=False)
     tr = train_op(model_name=model_name, dataset_path=ds.outputs["dataset_path"], epochs=epochs, output_dir=output_dir).after(ds)
     validate_op(model_path=tr.outputs["model_path"], dataset_path=ds.outputs["dataset_path"]).after(tr)
     predict_op(model_path=tr.outputs["model_path"], dataset_path=ds.outputs["dataset_path"]).after(tr)

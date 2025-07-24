@@ -26,7 +26,7 @@ if __name__ == "__main__":
             "version_number": 1,
             "model_name": "yolov8s.pt",
             "epochs": 10,
-            "output_dir": "/mnt/data/output",
+            "output_dir": "/tmp/output",
             "minio_endpoint": "minio-service.kubeflow.svc.cluster.local:9000",
             "minio_access_key": "minio",
             "minio_secret_key": "minio123",
