@@ -60,7 +60,7 @@ def export_model(model_path, export_format="onnx", nms=True,
 
 # Create container components
 download_op = func_to_container_op(download_dataset, base_image="python:3.9", packages_to_install=["roboflow"])
-train_op    = func_to_container_op(train_model, base_image="python:3.9", packages_to_install=["ultralytics"])
+train_op    = func_to_container_op(train_model, base_image="jupyter/scipy-notebook:python-3.9", packages_to_install=["ultralytics"])
 validate_op = func_to_container_op(validate_model, base_image="python:3.9", packages_to_install=["ultralytics"])
 predict_op  = func_to_container_op(predict_model, base_image="python:3.9", packages_to_install=["ultralytics"])
 export_op   = func_to_container_op(export_model, base_image="python:3.9", packages_to_install=["ultralytics", "minio"])
