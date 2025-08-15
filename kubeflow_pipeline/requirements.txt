@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+numpy==1.23.5
+onnxruntime
+pydantic
+ultralytics
