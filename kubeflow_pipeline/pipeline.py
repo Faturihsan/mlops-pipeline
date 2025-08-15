@@ -12,6 +12,12 @@ from kfp.components import func_to_container_op
 # Component functions
 # ----------------------
 
+def read_requirements(file_path="requirements.txt"):
+    """Membaca file requirements.txt dan mengembalikannya sebagai list."""
+    with open(file_path, 'r') as f:
+        return [line.strip() for line in f if line.strip()]
+    
+
 def download_dataset(api_key: str,
                      workspace: str,
                      project_name: str,
@@ -113,11 +119,12 @@ def export_model(model_path: str,
 # ----------------------
 # Wrap functions to container components
 # ----------------------
+requirements_list = read_requirements()
 
 download_op = func_to_container_op(
     download_dataset,
     base_image="python:3.9",
-    packages_to_install=["roboflow"]
+    packages_to_install=requirements_list
 )
 
 # Use an image with system libs (libGL, etc.) to avoid OpenCV issues
@@ -125,25 +132,25 @@ download_op = func_to_container_op(
 train_op = func_to_container_op(
     train_model,
     base_image="jupyter/scipy-notebook:python-3.9",
-    packages_to_install_from_file="requirements.txt"
+    packages_to_install=requirements_list
 )
 
 validate_op = func_to_container_op(
     validate_model,
     base_image="python:3.9",
-    packages_to_install_from_file="requirements.txt"
+    packages_to_install=requirements_list
 )
 
 predict_op = func_to_container_op(
     predict_model,
     base_image="python:3.9",
-    packages_to_install_from_file="requirements.txt"
+    packages_to_install=requirements_list
 )
 
 export_op = func_to_container_op(
     export_model,
     base_image="python:3.9",
-    packages_to_install_from_file="requirements.txt"
+    packages_to_install=requirements_list
 )
 
 
