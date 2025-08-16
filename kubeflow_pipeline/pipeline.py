@@ -173,13 +173,16 @@ def yolov8_pipeline(api_key: str = "Ta6oCmhCi264c7zHQyZM",
                     minio_secret_key: str = "minio123",
                     bucket: str = "models-trained"):
 
-    # 0) Create a PVC and mount it to every step
-    vol = dsl.VolumeOp(
-        name="create-shared-volume",
-        resource_name="yolov8-shared-pvc",
-        size="20Gi",
-        modes=["ReadWriteOnce"],
-    )
+    # # 0) Create a PVC and mount it to every step
+    # vol = dsl.VolumeOp(
+    #     name="create-shared-volume",
+    #     resource_name="yolov8-shared-pvc",
+    #     size="20Gi",
+    #     modes=["ReadWriteOnce"],
+    # )
+
+    pvc_name = "yolov8-shared-pvc"
+    vol = dsl.PipelineVolume(pvc=pvc_name)
 
     # 1) Download (no cache; write into the PVC)
     ds = download_op(
@@ -189,8 +192,8 @@ def yolov8_pipeline(api_key: str = "Ta6oCmhCi264c7zHQyZM",
         version_number=version_number,
         base_dir=f"{mount_path}/rf"
     ).set_caching_options(enable_caching=False)
-    ds.after(vol)
-    ds.add_pvolumes({mount_path: vol.volume})
+    # ds.after(vol)
+    ds.add_pvolumes({mount_path: vol})
 
     # 2) Train
     tr = train_op(
@@ -199,21 +202,21 @@ def yolov8_pipeline(api_key: str = "Ta6oCmhCi264c7zHQyZM",
         epochs=epochs,
         output_dir=output_dir
     ).after(ds)
-    tr.add_pvolumes({mount_path: vol.volume})
+    tr.add_pvolumes({mount_path: vol})
 
     # 3) Validate
     va = validate_op(
         model_path=tr.outputs["model_path"],
         dataset_path=ds.outputs["dataset_path"]
     ).after(tr)
-    va.add_pvolumes({mount_path: vol.volume})
+    va.add_pvolumes({mount_path: vol})
 
     # 4) Predict
     pr = predict_op(
         model_path=tr.outputs["model_path"],
         dataset_path=ds.outputs["dataset_path"]
     ).after(tr)
-    pr.add_pvolumes({mount_path: vol.volume})
+    pr.add_pvolumes({mount_path: vol})
 
     # 5) Export to MinIO
     ex = export_op(
@@ -225,4 +228,4 @@ def yolov8_pipeline(api_key: str = "Ta6oCmhCi264c7zHQyZM",
         minio_secret_key=minio_secret_key,
         bucket=bucket
     ).after(tr)
-    ex.add_pvolumes({mount_path: vol.volume})
+    ex.add_pvolumes({mount_path: vol})
