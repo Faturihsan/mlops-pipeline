@@ -124,7 +124,7 @@ requirements_list = read_requirements()
 download_op = func_to_container_op(
     download_dataset,
     base_image="python:3.9",
-    packages_to_install=requirements_list
+    # packages_to_install=requirements_list
 )
 
 # Use an image with system libs (libGL, etc.) to avoid OpenCV issues
