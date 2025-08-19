@@ -12,10 +12,10 @@ from kfp.components import func_to_container_op
 # Component functions
 # ----------------------
 
-def read_requirements(file_path="requirements.txt"):
-    """Membaca file requirements.txt dan mengembalikannya sebagai list."""
-    with open(file_path, 'r') as f:
-        return [line.strip() for line in f if line.strip()]
+# def read_requirements(file_path="requirements.txt"):
+#     """Membaca file requirements.txt dan mengembalikannya sebagai list."""
+#     with open(file_path, 'r') as f:
+#         return [line.strip() for line in f if line.strip()]
     
 
 def download_dataset(api_key: str,
@@ -119,7 +119,7 @@ def export_model(model_path: str,
 # ----------------------
 # Wrap functions to container components
 # ----------------------
-requirements_list = read_requirements()
+# requirements_list = read_requirements()
 
 download_op = func_to_container_op(
     download_dataset,
@@ -131,26 +131,22 @@ download_op = func_to_container_op(
 # All subsequent steps now read dependencies from your requirements.txt file
 train_op = func_to_container_op(
     train_model,
-    base_image="jupyter/scipy-notebook:python-3.9",
-    packages_to_install=requirements_list
+    base_image="faturihsan/requirements:latest",
 )
 
-validate_op = func_to_container_op(
+validate_op = func_to_container_op(z
     validate_model,
-    base_image="python:3.9",
-    packages_to_install=requirements_list
+    base_image="faturihsan/requirements:latest",
 )
 
 predict_op = func_to_container_op(
     predict_model,
-    base_image="python:3.9",
-    packages_to_install=requirements_list
+    base_image="faturihsan/requirements:latest",
 )
 
 export_op = func_to_container_op(
     export_model,
-    base_image="python:3.9",
-    packages_to_install=requirements_list
+    base_image="faturihsan/requirements:latest",
 )
 
 

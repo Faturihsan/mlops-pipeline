@@ -1,8 +1,8 @@
 roboflow
 fastapi
 uvicorn
-numpy==1.23.5
+numpy==1.26.4
 onnxruntime
 pydantic
 ultralytics==8.2.103
-roboflow==1.1.48
+roboflow
